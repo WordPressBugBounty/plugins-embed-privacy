@@ -75,7 +75,7 @@ final class Replacer {
 		$tags_regex = '(' . \implode( '|', \array_filter( $allowed_tags, static function( $tag ) {
 			return \preg_quote( $tag, '/' );
 		} ) ) . ')';
-		$pattern = '/<' . $tags_regex . '([^"]*)"([^<]*)' . \trim( $pattern, '/' ) . '([^"]*)"([^>]*)(>(.*?)<\/' . $tags_regex . ')?>/';
+		$pattern = '/<' . $tags_regex . '([^"]*)"([^<]*)(?<original_pattern>' . \trim( $pattern, '/' ) . ')([^"]*)"([^>]*)(>(.*?)<\/' . $tags_regex . ')?>/';
 		
 		return $pattern;
 	}
@@ -161,11 +161,6 @@ final class Replacer {
 				return $output;
 			}
 			
-			// check if cookie is set
-			if ( Providers::is_always_active( $provider->get_name() ) ) {
-				return $output;
-			}
-			
 			$embed_title = Oembed::get_title( $output );
 			/* translators: embed title */
 			$attributes['embed_title'] = ! empty( $embed_title ) ? $embed_title : '';
@@ -196,11 +191,6 @@ final class Replacer {
 			}
 			
 			$output = $replacement->get( $attributes, $provider );
-			
-			if ( $provider->is( 'youtube' ) ) {
-				// replace youtube.com with youtube-nocookie.com
-				$output = \str_replace( 'youtube.com', 'youtube-nocookie.com', $output );
-			}
 		}
 		
 		return $output;

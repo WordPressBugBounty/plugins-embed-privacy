@@ -77,17 +77,7 @@ final class Replacement {
 		
 		// get default external content
 		// special case for youtube-nocookie.com as it is part of YouTube provider
-		// and gets rewritten in Divi
-		// see: https://github.com/epiphyt/embed-privacy/issues/69
-		if (
-			! $ignore_unknown_providers
-			&& (
-				! \str_contains( $content, 'youtube-nocookie.com' )
-				|| ! Providers::is_always_active( 'youtube' )
-			)
-		) {
-			$attributes['check_always_active'] = true;
-			
+		if ( ! $ignore_unknown_providers || \str_contains( $content, 'youtube-nocookie.com' ) ) {
 			if ( $provider instanceof Provider ) {
 				$this->provider = $provider;
 				$content = $this->replace( $content, $attributes );
@@ -212,7 +202,6 @@ final class Replacement {
 		
 		$attributes = \wp_parse_args( $attributes, [
 			'additional_checks' => [],
-			'check_always_active' => false,
 			'elements' => [ 'embed', 'iframe', 'object' ],
 			'element_attribute' => 'src',
 			'height' => 0,
@@ -279,16 +268,6 @@ final class Replacement {
 					continue;
 				}
 				
-				// providers need to be explicitly checked if they're always active
-				// see https://github.com/epiphyt/embed-privacy/issues/115
-				if ( $attributes['check_always_active'] && Providers::is_always_active( $this->provider->get_name() ) ) {
-					if ( ! empty( $attributes['assets'] ) ) {
-						$content = Assets::get_static( $attributes['assets'], $content );
-					}
-					
-					return $content;
-				}
-				
 				if ( $this->provider->is_unknown() ) {
 					$embedded_host = \wp_parse_url( $element->getAttribute( $attributes['element_attribute'] ), \PHP_URL_HOST );
 					
@@ -301,19 +280,6 @@ final class Replacement {
 					
 					$this->provider->set_title( $embedded_host );
 					$this->provider->set_name( \sanitize_title( $embedded_host ) );
-					
-					// unknown providers need to be explicitly checked if they're always active
-					// see https://github.com/epiphyt/embed-privacy/issues/115
-					if (
-						$attributes['check_always_active']
-						&& Providers::is_always_active( $this->provider->get_name() )
-					) {
-						if ( ! empty( $attributes['assets'] ) ) {
-							$content = Assets::get_static( $attributes['assets'], $content );
-						}
-						
-						return $content;
-					}
 					
 					// check URL for available provider
 					foreach ( Providers::get_instance()->get_list() as $provider ) {
@@ -388,25 +354,51 @@ final class Replacement {
 		
 		\libxml_use_internal_errors( false );
 		
+		$i = -1;
+		
 		// embeds for other elements need to be handled manually
 		if (
 			empty( $this->replacements )
 			&& ! empty( $attributes['regex'] )
 			&& ! $this->provider->is_unknown()
 			&& ! $this->provider->is_disabled()
-			&& \preg_match( $attributes['regex'], $content, $matches ) === 1
-			&& ! \str_contains( $matches[0], 'embed-privacy-' )
+			&& \preg_match_all( $attributes['regex'], $content, $matches ) >= 1
 		) {
-			$content = \preg_replace(
-				$attributes['regex'],
-				Template::get(
-					$this->provider,
-					$matches[0],
-					$attributes
-				),
-				$content,
-				1
-			);
+			foreach ( $matches[0] as $matched_content ) {
+				++$i;
+				
+				if ( \str_contains( $matched_content, 'embed-privacy-' ) ) {
+					continue;
+				}
+				
+				if ( empty( $matches['original_pattern'][ $i ] ) ) {
+					continue;
+				}
+				
+				// the original pattern must not be inside a href attribute
+				if ( \str_contains( $matched_content, 'href="' . $matches['original_pattern'][ $i ] ) ) {
+					continue;
+				}
+				
+				// if the content contains an embed wrapper class, that means that the
+				// embed is broken
+				if (
+					$this->provider->is_system()
+					&& \str_contains( $matched_content, 'class="wp-block-embed__wrapper' )
+				) {
+					return $content;
+				}
+				
+				$content = \str_replace(
+					$matched_content,
+					Template::get(
+						$this->provider,
+						$matched_content,
+						$attributes
+					),
+					$content
+				);
+			}
 		}
 		
 		// decode to make sure there is nothing left encoded if replacements have been made
@@ -422,6 +414,7 @@ final class Replacement {
 					'<html><meta charset="utf-8">',
 					'</html>',
 					'%20data-epi-spacing%20',
+					'%_epi_20data-epi-spacing%_epi_20', // % has been replaced with %_epi_ after replacing spaces
 				],
 				\array_values( $character_replacements )
 			),
@@ -429,6 +422,7 @@ final class Replacement {
 				[
 					'',
 					'',
+					' ',
 					' ',
 				],
 				\array_keys( $character_replacements )
