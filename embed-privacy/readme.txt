@@ -2,8 +2,8 @@
 Contributors: epiphyt, kittmedia, krafit
 Tags: oembed, privacy, gutenberg, iframes, performance
 Requires at least: 5.9
-Stable tag: 1.10.10
-Tested up to: 6.7
+Stable tag: 1.11.0
+Tested up to: 6.8
 Requires PHP: 5.6
 License: GPL2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -54,6 +54,8 @@ We currently support all oEmbed providers known to WordPress core by default. Wa
 * Amazon Kindle
 * Anghami
 * Animoto
+* Bluesky
+* Canva
 * Cloudup
 * DailyMotion
 * Facebook
@@ -87,7 +89,20 @@ We currently support all oEmbed providers known to WordPress core by default. Wa
 * WordPress.tv
 * YouTube
 
-We also support Google Maps via iframe and the plugins Maps Marker, Maps Marker Pro and Shortcodes Ultimate.
+We also support Google Maps via iframe and Divi and the following plugins:
+
+* BuddyPress activity stream
+* Jetpack (Facebook posts)
+* Maps Marker (Pro)
+* Shortcodes Ultimate
+* wpForo (with the plugin wpForo Embeds)
+
+Additionally, we support the following custom content:
+
+* Local Fediverse content
+* Local X posts
+* Facebook embed code (HTML)
+* Instagram embed code (HTML)
 
 Since version 1.2.0, you can also add custom embed providers by going to **Settings > Embed Privacy > Manage embeds**. Here you can also modify any existing embed provider, change its logo, add a background image, change the text displaying on the embed or disable the embed provider entirely.
 
@@ -137,13 +152,27 @@ Check out our documentation: [https://epiph.yt/en/embed-privacy/documentation/](
 
 = Who are you, folks? =
 
-We are [Epiphyt](https://epiph.yt/), your friendly neighborhood WordPress plugin shop from southern Germany.
+We are [Epiphyt](https://epiph.yt/en/), your friendly neighborhood WordPress plugin shop from southern Germany.
 
 = How can I report security bugs? =
 
 You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://patchstack.com/database/vdp/embed-privacy)
 
 == Changelog ==
+
+= 1.11.0 =
+* Added: Support for embed provider Bluesky
+* Added: Support for embed provider Canva
+* Added: Support for local ActivityPub posts
+* Added: Support for BuddyPress activity stream
+* Added: Support for Facebook and Instagram HTML embed codes
+* Added: Support for wpForo Embeds
+* Added: Defining the term for the content direct link or disabling it altogether
+* Added: Support area to easily copy data for support
+* Improved: After enabling an embed, the content now receives focus
+* Improved: Link names for privacy policy now include the service's name
+* Fixed: Support for Embed Privacy being installed via MU plugin directory
+* Developers: [Migration guide](https://epiph.yt/en/embed-privacy/documentation/migration-to-version-1-11-0/)
 
 = 1.10.10 =
 * Fixed: Loading Google Maps in Divi
