@@ -44,24 +44,43 @@ document.addEventListener( 'DOMContentLoaded', function() {
 				}
 				
 				const iframe = document.createElement( 'iframe' );
-				let url = settings.youtube_url.replace( 'watch?v=', 'embed/' ) + '?';
+				const divider = settings.youtube_url.indexOf( '?' ) !== -1 ? '&' : '?';
+				let url = settings.youtube_url.replace( 'watch?v=', 'embed/' ) + divider;
 				
-				if ( settings.controls ) {
-					url += 'controls=1&';
+				if ( settings.youtube_url.indexOf( 'youtu.be' ) !== -1 ) {
+					const urlObject = new URL( settings.youtube_url );
+					
+					url = 'https://www.youtube-nocookie.com/embed' + urlObject.pathname + '?';
 				}
 				
-				if ( settings.autoplay ) {
-					url += 'autoplay=1&playsinline=1&';
+				const properties = {
+					autoplay: settings.autoplay ? 1 : 0,
+					cc_load_policy: settings.cc_load_policy ? 1 : 0,
+					controls: settings.controls ? 1 : 0,
+					end: settings.end,
+					playsinline: settings.play_on_mobile ? 1 : 0,
+					rel: settings.rel ? 1 : 0,
+					start: settings.start,
+				};
+				
+				for ( const property in properties ) {
+					if ( properties[ property ] === undefined ) {
+						continue;
+					}
+					
+					url += property + '=' + properties[ property ] + '&';
+					
+					if ( property === 'autoplay' && properties[ property ] === 1 && ! properties.playsinline ) {
+						url += 'playsinline=1&';
+					}
 				}
 				
 				// build iframe to replace embed video div
-				iframe.src = url;
+				iframe.src = url.replace( /&$/, '' );
 				iframe.allowFullscreen = 1;
 				iframe.class = 'elementor-video';
-				iframe.style.maxHeight = '332px';
-				iframe.style.maxWidth = '100%';
-				iframe.style.height = 360;
-				iframe.style.width = 640;
+				iframe.style.height = '100%';
+				iframe.style.width = '100%';
 				
 				// replace the video element with the iframe
 				embedVideo.parentNode.replaceChild( iframe, embedVideo );

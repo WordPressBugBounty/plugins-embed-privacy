@@ -194,7 +194,7 @@ final class Replacement {
 		 * @param	string	$provider_name Embed provider name
 		 * @param	array	$attributes Additional attributes
 		 */
-		$ignore_embed = (bool) \apply_filters( 'embed_privacy_ignore_embed', false, $content, $this->provider->get_title(), $this->provider->get_name(), $attributes );
+		$ignore_embed = (bool) \apply_filters( 'embed_privacy_ignore_embed', $this->provider->is_disabled(), $content, $this->provider->get_title(), $this->provider->get_name(), $attributes );
 		
 		if ( $ignore_embed ) {
 			return $content;
@@ -261,32 +261,6 @@ final class Replacement {
 					continue;
 				}
 				
-				if (
-					empty( $attributes['regex'] )
-					|| ! \preg_match_all( $this->provider->get_pattern(), $element->getAttribute( $attributes['element_attribute'] ), $matches )
-				) {
-					continue;
-				}
-				
-				foreach ( $matches[0] as $matched_content ) {
-					/**
-					 * Filter whether the replacement should take place for given matches.
-					 * 
-					 * @since	1.10.9
-					 * 
-					 * @param	bool									$should_replace Whether the replacement should take place
-				 * @param	string									$matched_content Actual matched content
-					 * @param	\epiphyt\Embed_privacy\embed\Provider	$provider Provider object
-					 * @param	string									$content Current content
-					 * @param	mixed[]									$attributes Current attributes
-					 */
-					$should_replace = \apply_filters( 'embed_privacy_should_replace_match', true, $matched_content, $this->provider, $content, $attributes );
-					
-					if ( ! $should_replace ) {
-						continue 2;
-					}
-				}
-				
 				if ( $this->provider->is_unknown() ) {
 					$embedded_host = \wp_parse_url( $element->getAttribute( $attributes['element_attribute'] ), \PHP_URL_HOST );
 					
@@ -306,6 +280,33 @@ final class Replacement {
 							$provider->is_matching( $element->getAttribute( $attributes['element_attribute'] ) )
 							&& empty( $replacements )
 						) {
+							continue 2;
+						}
+					}
+				}
+				else {
+					if (
+						empty( $attributes['regex'] )
+						|| ! \preg_match_all( $this->provider->get_pattern(), $element->getAttribute( $attributes['element_attribute'] ), $matches )
+					) {
+						continue;
+					}
+					
+					foreach ( $matches[0] as $matched_content ) {
+						/**
+						 * Filter whether the replacement should take place for given matches.
+						 * 
+						 * @since	1.10.9
+						 * 
+						 * @param	bool									$should_replace Whether the replacement should take place
+					 * @param	string									$matched_content Actual matched content
+						 * @param	\epiphyt\Embed_privacy\embed\Provider	$provider Provider object
+						 * @param	string									$content Current content
+						 * @param	mixed[]									$attributes Current attributes
+						 */
+						$should_replace = \apply_filters( 'embed_privacy_should_replace_match', true, $matched_content, $this->provider, $content, $attributes );
+						
+						if ( ! $should_replace ) {
 							continue 2;
 						}
 					}
@@ -541,6 +542,7 @@ final class Replacement {
 		// unknown embeds
 		if ( $current_provider === null ) {
 			$current_provider = new Provider();
+			$current_provider->set_pattern( \preg_quote( $url, '/' ) );
 		}
 		
 		/**
