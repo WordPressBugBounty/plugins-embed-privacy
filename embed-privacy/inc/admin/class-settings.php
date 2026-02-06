@@ -35,7 +35,7 @@ final class Settings {
 		<div class="wrap">
 			<h1><?php \esc_html_e( 'Embed Privacy', 'embed-privacy' ); ?> <a href="<?php echo \esc_url( \admin_url( 'edit.php?post_type=epi_embed' ) ); ?>" class="page-title-action"><?php \esc_html_e( 'Manage embeds', 'embed-privacy' ); ?></a></h1>
 			
-			<form action="options.php" method="post">
+			<form action="options.php" method="post" class="embed-privacy__settings-form">
 				<?php
 				\settings_fields( 'embed_privacy' );
 				\do_settings_sections( 'embed_privacy' );
@@ -82,10 +82,10 @@ final class Settings {
 			'embed_privacy',
 			'embed_privacy_general',
 			[
-				'description' => \__( 'By enabling this option, tweets are embedded locally as text without any connection to X, and no privacy overlay is required.', 'embed-privacy' ),
+				'description' => \__( 'By enabling this option, X posts are embedded locally as text without any connection to X, and no privacy overlay is required.', 'embed-privacy' ),
 				'name' => 'embed_privacy_local_tweets',
 				'option_type' => 'option',
-				'title' => \__( 'Local tweets', 'embed-privacy' ),
+				'title' => \__( 'Local X posts', 'embed-privacy' ),
 				'type' => 'checkbox',
 			]
 		);
@@ -124,6 +124,21 @@ final class Settings {
 			]
 		);
 		\register_setting( 'embed_privacy', 'embed_privacy_download_thumbnails' );
+		\add_settings_field(
+			'embed_privacy_force_script_loading',
+			\__return_empty_string(),
+			[ Field::class, 'get' ],
+			'embed_privacy',
+			'embed_privacy_general',
+			[
+				'description' => \__( 'This loads the embed scripts on every page. Only use this option if your website loads content dynamically via JavaScript, that can include embedded content.', 'embed-privacy' ),
+				'name' => 'embed_privacy_force_script_loading',
+				'option_type' => 'option',
+				'title' => \__( 'Force script loading', 'embed-privacy' ),
+				'type' => 'checkbox',
+			]
+		);
+		\register_setting( 'embed_privacy', 'embed_privacy_force_script_loading' );
 		\add_settings_field(
 			'embed_privacy_preserve_data_on_uninstall',
 			\__( 'Data handling', 'embed-privacy' ),

@@ -129,9 +129,12 @@ final class Elementor {
 	 * @return	bool Whether Elementor has been used
 	 */
 	public static function is_used() {
+		$id = \get_the_ID();
+		
 		return System::is_plugin_active( 'elementor/elementor.php' )
-			&& \get_the_ID()
-			&& Plugin::$instance->documents->get( \get_the_ID() )->is_built_with_elementor();
+			&& $id
+			&& Plugin::$instance->documents->get( $id )
+			&& Plugin::$instance->documents->get( $id )->is_built_with_elementor();
 	}
 	
 	/**
@@ -164,7 +167,8 @@ final class Elementor {
 			return $content;
 		}
 		
-		if ( \str_contains( $content, 'youtube.com\/watch' ) ) {
+		// video elements
+		if ( \str_contains( $content, 'youtube.com\/watch' ) || \str_contains( $content, 'youtu.be\/' ) ) {
 			$content = self::get_youtube_overlay( $content );
 			Embed_Privacy::get_instance()->frontend->print_assets();
 		}

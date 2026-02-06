@@ -12,7 +12,7 @@ document.addEventListener( 'DOMContentLoaded', function() {
 	var overlayLinks = document.querySelectorAll( '.embed-privacy-overlay a' );
 	
 	initOverlays( overlays, overlayLinks, checkboxes, labels );
-	initBuddyPressActivityStream();
+	initMutationObserver();
 	optOut();
 	setMinHeight();
 	
@@ -46,7 +46,7 @@ document.addEventListener( 'DOMContentLoaded', function() {
 			enableAlwaysActiveProviders( document.querySelectorAll( '.embed-privacy-overlay' ) );
 			
 			// focus first element in container, but not for opt-out shortcode
-			if ( container ) {
+			if ( container && document.activeElement !== container ) {
 				container.querySelector( '.embed-privacy-content > :first-child' ).focus();
 			}
 		}
@@ -70,6 +70,7 @@ document.addEventListener( 'DOMContentLoaded', function() {
 	 * @param {HTMLElement[]} currentOverlays List of current overlays
 	 */
 	function enableAlwaysActiveProviders( currentOverlays ) {
+		const activeElement = document.activeElement;
 		var cookie = ( get_cookie( 'embed-privacy' ) ? JSON.parse( get_cookie( 'embed-privacy' ) ) : '' );
 		
 		if ( ! currentOverlays ) {
@@ -89,6 +90,9 @@ document.addEventListener( 'DOMContentLoaded', function() {
 				currentOverlays[ i ].click();
 			}
 		}
+		
+		// focus previously active element
+		setTimeout( () => activeElement.focus(), 50 );
 	}
 	
 	/**
@@ -122,7 +126,7 @@ document.addEventListener( 'DOMContentLoaded', function() {
 		for ( var i = 0; i < embedOverlays.length; i++ ) {
 			embedOverlays[ i ].addEventListener( 'click', function( event ) {
 				if ( event.currentTarget.tagName !== 'INPUT' ) {
-					overlayClick( event.currentTarget );
+					overlayClick( event.currentTarget, true );
 				}
 			} );
 			
@@ -172,29 +176,28 @@ document.addEventListener( 'DOMContentLoaded', function() {
 	}
 	
 	/**
-	 * Initialize support for BuddyPress activity stream.
+	 * Initialize a MutationObserver to allow working embeds in dynamic content.
+	 * 
+	 * @since	1.12.0
 	 */
-	function initBuddyPressActivityStream() {
-		const activityStream = document.getElementById( 'activity-stream' );
-		
-		if ( ! activityStream ) {
-			return;
-		}
-		
-		const activityObserver = new MutationObserver( ( mutations ) => {
+	function initMutationObserver() {
+		const observer = new MutationObserver( ( mutations ) => {
 			for ( const mutation of mutations ) {
-				const checkboxes = mutation.target.querySelectorAll( '.embed-privacy-inner .embed-privacy-input' );
-				const labels = mutation.target.querySelectorAll( '.embed-privacy-inner .embed-privacy-label' );
-				const overlays = mutation.target.querySelectorAll( '.embed-privacy-overlay' );
-				const overlayLinks = mutation.target.querySelectorAll( '.embed-privacy-overlay a' );
-				
-				if ( overlays.length ) {
-					initOverlays( overlays, overlayLinks, checkboxes, labels );
+				for ( const newNodes of mutation.addedNodes ) {
+					const overlays = newNodes.querySelectorAll( '.embed-privacy-overlay' );
+					
+					if ( overlays.length ) {
+						const checkboxes = newNodes.querySelectorAll( '.embed-privacy-inner .embed-privacy-input' );
+						const labels = newNodes.querySelectorAll( '.embed-privacy-inner .embed-privacy-label' );
+						const overlayLinks = newNodes.querySelectorAll( '.embed-privacy-overlay a' );
+						
+						initOverlays( overlays, overlayLinks, checkboxes, labels );
+					}
 				}
 			}
 		} );
 		
-		activityObserver.observe( activityStream, {
+		observer.observe( document.body, {
 			childList: true,
 		} );
 	}
@@ -253,10 +256,12 @@ document.addEventListener( 'DOMContentLoaded', function() {
 	 * Clicking on an overlay.
 	 * 
 	 * @since	1.2.0
+	 * @since	1.12.2 Added parameter isSynthetic
 	 * 
 	 * @param	{element}	target Target element
+	 * @param	{boolean}	isSynthetic Whether the click event is synthetic
 	 */
-	function overlayClick( target ) {
+	function overlayClick( target, isSynthetic = false ) {
 		var embedContainer = target.parentNode;
 		var embedContent = target.nextElementSibling;
 		
@@ -298,7 +303,9 @@ document.addEventListener( 'DOMContentLoaded', function() {
 		}
 		
 		// focus first element in container
-		embedContainer.querySelector( '.embed-privacy-content > :first-child' ).focus();
+		if ( ! isSynthetic ) {
+			embedContainer.querySelector( '.embed-privacy-content > :first-child' ).focus();
+		}
 		
 		if ( typeof jQuery !== 'undefined' ) {
 			const videoShortcode = jQuery( '.wp-video-shortcode' );
