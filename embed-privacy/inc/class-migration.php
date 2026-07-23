@@ -30,7 +30,7 @@ class Migration {
 	 * @var		string Current migration version
 	 * @since	1.2.2
 	 */
-	private $version = '1.12.0';
+	private $version = '1.13.0';
 	
 	/**
 	 * Migration constructor.
@@ -225,6 +225,8 @@ class Migration {
 				$this->migrate_1_11_0();
 			case '1.11.0':
 				$this->migrate_1_12_0();
+			case '1.12.0':
+				$this->migrate_1_13_0();
 			case $this->version:
 				// most recent version, do nothing
 				break;
@@ -266,14 +268,6 @@ class Migration {
 	 * - Add missing meta data
 	 */
 	private function migrate_1_2_1() {
-		global $wp_filesystem;
-		
-		// initialize the WP filesystem if not exists
-		if ( empty( $wp_filesystem ) ) {
-			require_once \ABSPATH . 'wp-admin/includes/file.php';
-			\WP_Filesystem();
-		}
-		
 		$available_providers = \get_posts( [
 			'no_found_rows' => true,
 			'numberposts' => -1,
@@ -336,7 +330,16 @@ class Migration {
 	 * - Update regex for Google Maps
 	 */
 	private function migrate_1_3_0() {
-		$providers = Embed_Privacy::get_instance()->get_embeds( 'oembed' );
+		$providers = \get_posts( [
+			'meta_key' => 'is_system',
+			'meta_value' => 'yes',
+			'no_found_rows' => true,
+			'numberposts' => -1,
+			'order' => 'ASC',
+			'orderby' => 'post_title',
+			'post_type' => 'epi_embed',
+			'update_post_term_cache' => false,
+		] );
 		$google_provider = \get_posts( [
 			'meta_key' => 'is_system',
 			'meta_value' => 'yes',
@@ -378,7 +381,14 @@ class Migration {
 	 * - Add missing default embed providers (this also adds new Wolfram Cloud)
 	 */
 	private function migrate_1_4_0() {
-		$providers = Embed_Privacy::get_instance()->get_embeds();
+		$providers = \get_posts( [
+			'no_found_rows' => true,
+			'numberposts' => -1,
+			'order' => 'ASC',
+			'orderby' => 'post_title',
+			'post_type' => 'epi_embed',
+			'update_post_term_cache' => false,
+		] );
 		$missing_providers = $this->providers;
 		$processed_providers = [];
 		
@@ -802,6 +812,44 @@ class Migration {
 	private function migrate_1_12_0() {
 		$this->set_translated_content_item_names();
 		$this->set_translated_descriptions();
+	}
+	
+	/**
+	 * Migrations for version 1.13.0.
+	 * 
+	 * @since	1.13.0
+	 * 
+	 * - Fix X regular expression
+	 * - Fix WordPress.tv regular expression
+	 */
+	private function migrate_1_13_0() {
+		$x_provider = \get_posts( [
+			'meta_key' => 'is_system',
+			'meta_value' => 'yes',
+			'name' => 'x',
+			'no_found_rows' => true,
+			'post_type' => 'epi_embed',
+			'update_post_term_cache' => false,
+		] );
+		$x_provider = \reset( $x_provider );
+		
+		if ( $x_provider instanceof WP_Post ) {
+			\update_post_meta( $x_provider->ID, 'regex_default', '/\\\/\\\/(www\\\.)?(twitter|x)\\\.com/' );
+		}
+		
+		$wordpress_tv_provider = \get_posts( [
+			'meta_key' => 'is_system',
+			'meta_value' => 'yes',
+			'name' => 'wordpresstv',
+			'no_found_rows' => true,
+			'post_type' => 'epi_embed',
+			'update_post_term_cache' => false,
+		] );
+		$wordpress_tv_provider = \reset( $wordpress_tv_provider );
+		
+		if ( $wordpress_tv_provider instanceof WP_Post ) {
+			\update_post_meta( $wordpress_tv_provider->ID, 'regex_default', '/wordpress\\\.tv/' );
+		}
 	}
 	
 	/**
@@ -1256,7 +1304,7 @@ class Migration {
 					'content_item_name' => \_x( 'tweet', 'content item name', 'embed-privacy' ),
 					'is_system' => 'yes',
 					'privacy_policy_url' => \__( 'https://x.com/privacy', 'embed-privacy' ),
-					'regex_default' => '\\\/\\\/(www\\\.)?(twitter|x)\\\.com/',
+					'regex_default' => '/\\\/\\\/(www\\\.)?(twitter|x)\\\.com/',
 				],
 				/* translators: embed provider */
 				'post_content' => \sprintf( \__( 'Click here to display content from %s.', 'embed-privacy' ), \_x( 'X', 'embed provider', 'embed-privacy' ) ),
@@ -1321,7 +1369,7 @@ class Migration {
 					'content_item_name' => \_x( 'video', 'content item name', 'embed-privacy' ),
 					'is_system' => 'yes',
 					'privacy_policy_url' => \__( 'https://wordpress.org/about/privacy/', 'embed-privacy' ),
-					'regex_default' => '/wordpress\\\.tv\/',
+					'regex_default' => '/wordpress\\\.tv/',
 				],
 				/* translators: embed provider */
 				'post_content' => \sprintf( \__( 'Click here to display content from %s.', 'embed-privacy' ), \_x( 'WordPress.tv', 'embed provider', 'embed-privacy' ) ),

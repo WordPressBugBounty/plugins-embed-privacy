@@ -1,6 +1,7 @@
 <?php
 namespace epiphyt\Embed_Privacy\admin;
 
+use epiphyt\Embed_Privacy\Embed_Privacy;
 use WP_Post;
 
 /**
@@ -112,7 +113,7 @@ final class Fields {
 				 */
 				$fields = \apply_filters( 'embed_privacy_editor_fields', $post->ID );
 				
-				if ( $fields !== $post->ID ) {
+				if ( $fields !== $post->ID && \is_string( $fields ) ) {
 					echo $fields; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 				}
 				?>
@@ -392,18 +393,12 @@ final class Fields {
 	 * @return	array The updated form fields
 	 */
 	private static function validate_files() {
-		global $wp_filesystem;
-		
-		// initialize the WP filesystem if not exists
-		if ( empty( $wp_filesystem ) ) {
-			require_once \ABSPATH . 'wp-admin/includes/file.php';
-			\WP_Filesystem();
-		}
+		$wp_filesystem = Embed_Privacy::get_wp_filesystem();
 		
 		/**
 		 * Set the option names to look for files.
 		 * 
-		 * @param	array	The default name list
+		 * @param	array	$valid_files The default name list
 		 */
 		$valid_files = \apply_filters( 'embed_privacy_valid_files', [ 'background_image' ] );
 		$validated = [];
@@ -412,14 +407,29 @@ final class Fields {
 			return $validated;
 		}
 		
+		/**
+		 * Filter the allowed mime types for uploaded files.
+		 * 
+		 * @since	1.13.0
+		 * 
+		 * @param	string[]	$allowed_mime_types List of allowed mime types
+		 */
+		$allowed_mime_types = (array) \apply_filters( 'embed_privacy_allowed_file_mime_types', [ 'image/gif', 'image/jpeg', 'image/png', 'image/webp' ] );
+		
 		foreach ( $_FILES as $key => $files ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			if ( ! \in_array( $key, $valid_files, true ) ) { // check valid files
 				continue;
 			}
 			
+			$filetype = \wp_check_filetype( $files['name'] );
+			
+			if ( empty( $filetype['type'] ) || ! \in_array( $filetype['type'], $allowed_mime_types, true ) ) {
+				continue;
+			}
+			
 			$validated[ $key ] = [
 				'content' => $wp_filesystem->get_contents( $files['tmp_name'] ),
-				'name' => $files['name'],
+				'name' => \sanitize_file_name( $files['name'] ),
 				'tmp_name' => $files['tmp_name'],
 			];
 		}

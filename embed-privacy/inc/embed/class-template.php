@@ -51,6 +51,8 @@ final class Template {
 	 * @return	string The overlay template
 	 */
 	public static function get( $provider, $output, $attributes = [] ) {
+		$embed_post = null;
+		
 		if ( ! $provider instanceof Provider ) {
 			\_doing_it_wrong(
 				__METHOD__,
@@ -149,44 +151,48 @@ final class Template {
 		\ob_start();
 		?>
 		<p>
-		<?php
-		if ( ! empty( $provider->get_name() ) ) {
-			if ( $embed_post || ! empty( $provider->get_description() ) ) {
-				$allowed_tags = [
-					'a' => [
-						'href',
-						'target',
-					],
-				];
-				
-				if ( $embed_post ) {
-					$description = $embed_post->post_content;
-					$privacy_policy = \get_post_meta( $embed_post->ID, 'privacy_policy_url', true );
+			<?php
+			if ( ! empty( $provider->get_name() ) ) {
+				if ( $embed_post || ! empty( $provider->get_description() ) ) {
+					$allowed_tags = [
+						'a' => [
+							'href',
+							'target',
+						],
+					];
+					
+					if ( $embed_post ) {
+						$description = $embed_post->post_content;
+						$privacy_policy = \get_post_meta( $embed_post->ID, 'privacy_policy_url', true );
+					}
+					else {
+						$description = $provider->get_description();
+						$privacy_policy = $provider->get_privacy_policy_url();
+					}
+					
+					echo \wp_kses_post( self::ensure_localized_content( $description, $provider ) ) . \PHP_EOL;
+					
+					if ( $privacy_policy ) {
+						?>
+						<br>
+						<?php
+						/* translators: 1: embed provider, 2: opening <a> tag to the privacy policy, 3: closing </a> */
+						\printf( \wp_kses( \__( 'Learn more in %2$s%1$s’s privacy policy%3$s.', 'embed-privacy' ), $allowed_tags ), \esc_html( $provider->get_title() ), '<a href="' . \esc_url( $privacy_policy ) . '" target="_blank">', '</a>' );
+					}
 				}
 				else {
-					$description = $provider->get_description();
-					$privacy_policy = $provider->get_privacy_policy_url();
-				}
-				
-				echo \wp_kses_post( self::ensure_localized_content( $description, $provider ) ) . \PHP_EOL;
-				
-				if ( $privacy_policy ) {
-					?>
-					<br>
-					<?php
-					/* translators: 1: embed provider, 2: opening <a> tag to the privacy policy, 3: closing </a> */
-					\printf( \wp_kses( \__( 'Learn more in %2$s%1$s’s privacy policy%3$s.', 'embed-privacy' ), $allowed_tags ), \esc_html( $provider->get_title() ), '<a href="' . \esc_url( $privacy_policy ) . '" target="_blank">', '</a>' );
+					/* translators: embed provider */
+					\printf( \esc_html__( 'Click here to display content from %s.', 'embed-privacy' ), \esc_html( $provider->get_title() ) );
 				}
 			}
 			else {
-				/* translators: embed provider */
-				\printf( \esc_html__( 'Click here to display content from %s.', 'embed-privacy' ), \esc_html( $provider->get_title() ) );
+				\esc_html_e( 'Click here to display content from an external service.', 'embed-privacy' );
 			}
-		}
-		else {
-			\esc_html_e( 'Click here to display content from an external service.', 'embed-privacy' );
-		}
-		?>
+			?>
+			<noscript>
+				<br>
+				<?= \esc_html__( 'Please enable JavaScript in your browser to load this content.', 'embed-privacy' ); ?>
+			</noscript>
 		</p>
 		<p class="embed-privacy-input-wrapper">
 			<input id="<?php echo \esc_attr( $checkbox_id ); ?>" type="checkbox" value="1" class="embed-privacy-input" data-embed-provider="<?php echo \esc_attr( $provider->get_name() ); ?>">
@@ -205,8 +211,8 @@ final class Template {
 		 * 
 		 * @deprecated	1.10.0 Use embed_privacy_template_content instead
 		 * 
-		 * @param	string		$content The content
-		 * @param	string		$provider The embed provider of this embed
+		 * @param	string	$content The content
+		 * @param	string	$provider The embed provider of this embed
 		 */
 		$content = \apply_filters_deprecated(
 			'embed_privacy_content',
@@ -223,8 +229,8 @@ final class Template {
 		 * 
 		 * @since	1.10.0
 		 * 
-		 * @param	string		$content The content
-		 * @param	string		$provider The embed provider of this embed
+		 * @param	string	$content The content
+		 * @param	string	$provider The embed provider of this embed
 		 */
 		$content = \apply_filters( 'embed_privacy_template_content', $content, $provider );
 		
@@ -261,13 +267,17 @@ final class Template {
 				/* translators: 1: embed title, 2: embed provider */
 				$button_text = \sprintf( \__( 'Display "%1$s" from %2$s', 'embed-privacy' ), $attributes['embed_title'], \esc_html( $provider->get_title() ) );
 			}
+			
+			/* translators: embed provider */
+			$loaded_message = \sprintf( \__( 'Content from %s has been loaded.', 'embed-privacy' ), $provider->get_title() );
 			?>
 			<button type="button" class="embed-privacy-enable screen-reader-text"><?php echo \esc_html( $button_text ); ?></button>
+			<div class="embed-privacy-sr-message screen-reader-text" role="status" data-message="<?php echo \esc_attr( $loaded_message ); ?>"></div>
 			
 			<div class="embed-privacy-overlay">
 				<div class="embed-privacy-inner">
 					<?php
-					echo ! empty( $logo_style ) ? '<div class="embed-privacy-logo" style="' . \esc_attr( $logo_style ) . '"></div>' . \PHP_EOL : '';
+					echo ! empty( $logo_style ) ? '<div class="embed-privacy-logo" style="' . \esc_attr( $logo_style ) . '" aria-hidden="true"></div>' . \PHP_EOL : '';
 					echo $content . \PHP_EOL; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					?>
 				</div>
@@ -333,7 +343,7 @@ final class Template {
 			$footer_link_title = \sprintf(
 			/* translators: content name  */
 				\esc_html__( 'Open "%s" directly', 'embed-privacy' ),
-				$attributes['embed_title']
+				\esc_html( $attributes['embed_title'] )
 			);
 		}
 		else if ( ! empty( $provider->get_content_name() ) ) {

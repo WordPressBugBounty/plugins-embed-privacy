@@ -1,6 +1,7 @@
 <?php
 namespace epiphyt\Embed_Privacy\thumbnail\provider;
 
+use epiphyt\Embed_Privacy\Embed_Privacy;
 use epiphyt\Embed_Privacy\thumbnail\Thumbnail;
 
 /**
@@ -33,7 +34,8 @@ final class Vimeo extends Thumbnail_Provider implements Thumbnail_Provider_Inter
 		
 		// the thumbnail URL has usually something like _295x166 in the end
 		// remove this to get the maximum resolution
-		$thumbnail_url = \substr( $data->thumbnail_url, 0, \strrpos( $data->thumbnail_url, '_' ) );
+		$underscore_position = \strrpos( $data->thumbnail_url, '_' );
+		$thumbnail_url = $underscore_position !== false ? \substr( $data->thumbnail_url, 0, $underscore_position ) : $data->thumbnail_url;
 		$id = self::get_id( $url );
 		
 		if ( $id ) {
@@ -89,15 +91,7 @@ final class Vimeo extends Thumbnail_Provider implements Thumbnail_Provider_Inter
 				return;
 			}
 			
-			/** @var	\WP_Filesystem_Direct $wp_filesystem */
-			global $wp_filesystem;
-			
-			// initialize the WP filesystem if not exists
-			if ( empty( $wp_filesystem ) ) {
-				\WP_Filesystem();
-			}
-			
-			$wp_filesystem->move( $file, $thumbnail_path );
+			Embed_Privacy::get_wp_filesystem()->move( $file, $thumbnail_path );
 		}
 		
 		\update_post_meta(

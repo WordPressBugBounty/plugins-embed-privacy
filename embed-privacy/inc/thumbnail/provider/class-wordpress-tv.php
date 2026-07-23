@@ -3,6 +3,7 @@ namespace epiphyt\Embed_Privacy\thumbnail\provider;
 
 use DOMDocument;
 use DOMXPath;
+use epiphyt\Embed_Privacy\Embed_Privacy;
 use epiphyt\Embed_Privacy\thumbnail\Thumbnail;
 
 /**
@@ -44,6 +45,8 @@ final class WordPress_TV extends Thumbnail_Provider implements Thumbnail_Provide
 	 * {@inheritDoc}
 	 */
 	public static function get_id( $content ) {
+		$id = '';
+		
 		if ( \str_contains( $content, '/video.wordpress.com/embed/' ) ) {
 			$extracted = \preg_replace( '/.*video\.wordpress\.com\/embed\//', '', $content ); // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText
 			$parts = \explode( '?', $extracted );
@@ -106,24 +109,21 @@ final class WordPress_TV extends Thumbnail_Provider implements Thumbnail_Provide
 			);
 			$xpath = new DOMXPath( $dom );
 			// get thumbnail URL from og:image meta
-			$thumbnail_url = $xpath->evaluate( '//meta[@property="og:image"]/@content' )->item( 0 )->value;
-			$file = \download_url( $thumbnail_url );
+			$og_image = $xpath->evaluate( '//meta[@property="og:image"]/@content' )->item( 0 );
 			
 			\libxml_use_internal_errors( $use_errors );
+			
+			if ( $og_image === null ) {
+				return;
+			}
+			
+			$file = \download_url( $og_image->value );
 			
 			if ( \is_wp_error( $file ) ) {
 				return;
 			}
 			
-			/** @var	\WP_Filesystem_Direct $wp_filesystem */
-			global $wp_filesystem;
-			
-			// initialize the WP filesystem if not exists
-			if ( empty( $wp_filesystem ) ) {
-				\WP_Filesystem();
-			}
-			
-			$wp_filesystem->move( $file, $thumbnail_path );
+			Embed_Privacy::get_wp_filesystem()->move( $file, $thumbnail_path );
 		}
 		
 		\update_post_meta(

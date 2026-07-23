@@ -17,8 +17,10 @@ use epiphyt\Embed_Privacy\integration\Activitypub;
 use epiphyt\Embed_Privacy\integration\Amp;
 use epiphyt\Embed_Privacy\integration\Astra;
 use epiphyt\Embed_Privacy\integration\Buddypress;
+use epiphyt\Embed_Privacy\integration\Cover_Block;
 use epiphyt\Embed_Privacy\integration\Divi;
 use epiphyt\Embed_Privacy\integration\Elementor;
+use epiphyt\Embed_Privacy\integration\Enfold;
 use epiphyt\Embed_Privacy\integration\Instagram;
 use epiphyt\Embed_Privacy\integration\Instagram_Feed;
 use epiphyt\Embed_Privacy\integration\Jetpack;
@@ -90,8 +92,10 @@ class Embed_Privacy {
 		Amp::class,
 		Astra::class,
 		Buddypress::class,
+		Cover_Block::class,
 		Divi::class,
 		Elementor::class,
+		Enfold::class,
 		Instagram::class,
 		Instagram_Feed::class,
 		Jetpack::class,
@@ -118,7 +122,7 @@ class Embed_Privacy {
 	 * @deprecated	1.10.0 Use \EPI_EMBED_PRIVACY_FILE instead
 	 * @var		string The full path to the main plugin file
 	 */
-	public $plugin_file = '';
+	public $plugin_file = \EPI_EMBED_PRIVACY_FILE;
 	
 	/**
 	 * @since	1.10.0
@@ -328,7 +332,8 @@ class Embed_Privacy {
 			return $this->cookie;
 		}
 		
-		$this->cookie = \json_decode( \sanitize_text_field( \wp_unslash( $_COOKIE['embed-privacy'] ) ) );
+		$cookie = \json_decode( \sanitize_text_field( \wp_unslash( $_COOKIE['embed-privacy'] ) ) );
+		$this->cookie = \is_object( $cookie ) ? $cookie : '';
 		
 		return $this->cookie;
 	}
@@ -663,7 +668,7 @@ class Embed_Privacy {
 		 * @deprecated	1.10.0
 		 * @since		1.9.0
 		 * 
-		 * @param	array $style_properties Style properties array
+		 * @param	array	$style_properties Style properties array
 		 */
 		$this->style = (array) \apply_filters_deprecated( 'embed_privacy_dynamic_style_properties', $this->style, '1.10.0' );
 		

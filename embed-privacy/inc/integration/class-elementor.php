@@ -59,15 +59,23 @@ final class Elementor {
 		
 		/** @var	\DOMElement $element */
 		foreach ( $dom->getElementsByTagName( 'div' ) as $element ) {
-			if ( ! \str_contains( $element->getAttribute( 'data-settings' ), 'youtube_url' ) ) {
+			$data_settings = $element->getAttribute( 'data-settings' );
+			
+			if (
+				! \str_contains( $data_settings, 'youtube_url' )
+				&& $element->getAttribute( 'data-e-type' ) !== 'e-youtube'
+			) {
 				continue;
 			}
 			
-			$settings = \json_decode( $element->getAttribute( 'data-settings' ) );
+			$settings = \json_decode( $data_settings );
 			$args = [];
 			
 			if ( ! empty( $settings->youtube_url ) ) {
 				$args['embed_url'] = $settings->youtube_url;
+			}
+			else if ( ! empty( $settings->source ) ) {
+				$args['embed_url'] = $settings->source;
 			}
 			
 			// get overlay template as DOM element
@@ -129,7 +137,7 @@ final class Elementor {
 	 * @return	bool Whether Elementor has been used
 	 */
 	public static function is_used() {
-		$id = \get_the_ID();
+		$id = \get_queried_object_id();
 		
 		return System::is_plugin_active( 'elementor/elementor.php' )
 			&& $id
@@ -144,15 +152,19 @@ final class Elementor {
 	 * @param	string	$suffix A filename suffix
 	 */
 	public static function register_assets( $is_debug, $suffix ) {
-		$js_file_url = \EPI_EMBED_PRIVACY_URL . 'assets/js/elementor-video' . $suffix . '.js';
-		$file_version = $is_debug ? \filemtime( \EPI_EMBED_PRIVACY_BASE . 'assets/js/elementor-video' . $suffix . '.js' ) : \EMBED_PRIVACY_VERSION;
+		if ( \file_exists( \EPI_EMBED_PRIVACY_BASE . 'assets/js/elementor-video' . $suffix . '.js' ) ) {
+			$js_file_url = \EPI_EMBED_PRIVACY_URL . 'assets/js/elementor-video' . $suffix . '.js';
+			$file_version = $is_debug ? \filemtime( \EPI_EMBED_PRIVACY_BASE . 'assets/js/elementor-video' . $suffix . '.js' ) : \EMBED_PRIVACY_VERSION;
+			
+			\wp_register_script( 'embed-privacy-elementor-video', $js_file_url, [], $file_version, [ 'strategy' => 'defer' ] );
+		}
 		
-		\wp_register_script( 'embed-privacy-elementor-video', $js_file_url, [], $file_version, [ 'strategy' => 'defer' ] );
-		
-		$css_file_url = \EPI_EMBED_PRIVACY_URL . 'assets/style/elementor' . $suffix . '.css';
-		$file_version = $is_debug ? \filemtime( \EPI_EMBED_PRIVACY_BASE . 'assets/style/elementor' . $suffix . '.css' ) : \EMBED_PRIVACY_VERSION;
-		
-		\wp_register_style( 'embed-privacy-elementor', $css_file_url, [], $file_version );
+		if ( \file_exists( \EPI_EMBED_PRIVACY_BASE . 'assets/style/elementor' . $suffix . '.css' ) ) {
+			$css_file_url = \EPI_EMBED_PRIVACY_URL . 'assets/style/elementor' . $suffix . '.css';
+			$file_version = $is_debug ? \filemtime( \EPI_EMBED_PRIVACY_BASE . 'assets/style/elementor' . $suffix . '.css' ) : \EMBED_PRIVACY_VERSION;
+			
+			\wp_register_style( 'embed-privacy-elementor', $css_file_url, [], $file_version );
+		}
 	}
 	
 	/**
@@ -168,8 +180,24 @@ final class Elementor {
 		}
 		
 		// video elements
-		if ( \str_contains( $content, 'youtube.com\/watch' ) || \str_contains( $content, 'youtu.be\/' ) ) {
+		if (
+			\str_contains( $content, 'youtube.com\/watch' )
+			|| \str_contains( $content, 'youtube.com/watch' )
+			|| \str_contains( $content, 'youtu.be\/' )
+			|| \str_contains( $content, 'youtu.be/' )
+			|| \str_contains( $content, 'e-youtube' )
+		) {
 			$content = self::get_youtube_overlay( $content );
+			
+			// make sure to register the assets, as they may not be registered
+			if ( self::is_used() ) {
+				$is_debug = \defined( 'WP_DEBUG' ) && \WP_DEBUG;
+				$suffix = ( $is_debug ? '' : '.min' );
+				
+				self::register_assets( $is_debug, $suffix );
+				self::enqueue_assets();
+			}
+			
 			Embed_Privacy::get_instance()->frontend->print_assets();
 		}
 		

@@ -75,7 +75,7 @@ final class Replacement {
 		$ignore_unknown_providers = (bool) \apply_filters( 'embed_privacy_ignore_unknown_providers', false, $content );
 		
 		// we don't need to process an empty content as it never contains an embed
-		if ( empty( \trim( $content ) ) ) {
+		if ( \trim( $content ) === '' ) {
 			return $content;
 		}
 		
@@ -105,6 +105,13 @@ final class Replacement {
 	 * @return	array List of character replacements
 	 */
 	private static function get_character_replacements() {
+		static $replacements = null;
+		
+		// the replacements are a constant configuration per request
+		if ( $replacements !== null ) {
+			return $replacements;
+		}
+		
 		$replacements = [
 			'%' => '@@epi_percentage',
 			' ' => ' data-epi-spacing ',
@@ -124,6 +131,41 @@ final class Replacement {
 		$replacements = (array) \apply_filters( 'embed_privacy_overlay_character_replacements', $replacements );
 		
 		return $replacements;
+	}
+	
+	/**
+	 * Get the (base) host of the current site.
+	 * If WordPress is installed on a sub domain, the base domain is returned.
+	 * 
+	 * @since	1.13.0
+	 * 
+	 * @return	string The current site host
+	 */
+	private static function get_host() {
+		static $hosts = [];
+		$blog_id = \get_current_blog_id();
+		
+		if ( isset( $hosts[ $blog_id ] ) ) {
+			return $hosts[ $blog_id ];
+		}
+		
+		$host = \wp_parse_url( \home_url(), \PHP_URL_HOST );
+		
+		if ( ! \filter_var( $host, \FILTER_VALIDATE_IP ) ) {
+			$host_array = \explode( '.', \str_replace( 'www.', '', $host ) );
+			$tld_count = \count( $host_array );
+			
+			if ( $tld_count >= 3 && \strlen( $host_array[ $tld_count - 2 ] ) === 2 ) {
+				$host = \implode( '.', \array_splice( $host_array, $tld_count - 3, 3 ) );
+			}
+			else if ( $tld_count >= 2 ) {
+				$host = \implode( '.', \array_splice( $host_array, $tld_count - 2, $tld_count ) );
+			}
+		}
+		
+		$hosts[ $blog_id ] = $host;
+		
+		return $host;
 	}
 	
 	/**
@@ -219,7 +261,7 @@ final class Replacement {
 			return Template::get( $this->provider, $content, $attributes );
 		}
 		
-		\libxml_use_internal_errors( true );
+		$use_errors = \libxml_use_internal_errors( true );
 		$dom = new DOMDocument();
 		$character_replacements = self::get_character_replacements();
 		$dom->loadHTML(
@@ -232,19 +274,7 @@ final class Replacement {
 		);
 		$template_dom = new DOMDocument();
 		// detect domain if WordPress is installed on a sub domain
-		$host = \wp_parse_url( \home_url(), \PHP_URL_HOST );
-		
-		if ( ! \filter_var( $host, \FILTER_VALIDATE_IP ) ) {
-			$host_array = \explode( '.', \str_replace( 'www.', '', $host ) );
-			$tld_count = \count( $host_array );
-			
-			if ( $tld_count >= 3 && \strlen( $host_array[ $tld_count - 2 ] ) === 2 ) {
-				$host = \implode( '.', \array_splice( $host_array, $tld_count - 3, 3 ) );
-			}
-			else if ( $tld_count >= 2 ) {
-				$host = \implode( '.', \array_splice( $host_array, $tld_count - 2, $tld_count ) );
-			}
-		}
+		$host = self::get_host();
 		
 		foreach ( $attributes['elements'] as $tag ) {
 			$replacements = [];
@@ -271,7 +301,9 @@ final class Replacement {
 					// and they are local by definition, so do nothing
 					// see https://github.com/epiphyt/embed-privacy/issues/27
 					if ( empty( $embedded_host ) ) {
-						return $content;
+						\libxml_use_internal_errors( $use_errors );
+						
+						return self::transform_replaced_characters( $content, $character_replacements );
 					}
 					
 					$this->provider->set_title( $embedded_host );
@@ -375,7 +407,7 @@ final class Replacement {
 			}
 		}
 		
-		\libxml_use_internal_errors( false );
+		\libxml_use_internal_errors( $use_errors );
 		
 		$i = -1;
 		
@@ -435,7 +467,7 @@ final class Replacement {
 					$this->provider->is_system()
 					&& \str_contains( $matched_content, 'class="wp-block-embed__wrapper' )
 				) {
-					return $content;
+					return self::transform_replaced_characters( $content, $character_replacements );
 				}
 				
 				/**
@@ -468,33 +500,11 @@ final class Replacement {
 		// decode to make sure there is nothing left encoded if replacements have been made
 		// otherwise, content is untouched by DOMDocument, and we don't need a decoding
 		// only required for WPBakery Page Builder
-		if ( ! empty( $this->replacements ) && \str_contains( 'vc_row', $content ) ) {
+		if ( ! empty( $this->replacements ) && \str_contains( $content, 'vc_row' ) ) {
 			$content = \rawurldecode( $content );
 		}
 		
-		return \str_replace(
-			\array_merge(
-				[
-					'<html><meta charset="utf-8">',
-					'</html>',
-					'%20data-epi-spacing%20',
-					'"data-epi-spacing%20',
-					'%_epi_20data-epi-spacing%_epi_20', // % has been replaced with %_epi_ after replacing spaces
-				],
-				\array_values( $character_replacements )
-			),
-			\array_merge(
-				[
-					'',
-					'',
-					' ',
-					'" ',
-					' ',
-				],
-				\array_keys( $character_replacements )
-			),
-			$content
-		);
+		return self::transform_replaced_characters( $content, $character_replacements );
 	}
 	
 	/**
@@ -582,5 +592,40 @@ final class Replacement {
 		 * This filter is documented in inc/embed/class-replacement.php.
 		 */
 		$this->providers[] = \apply_filters( 'embed_privacy_overlay_provider', $current_provider, $content, $url );
+	}
+	
+	/**
+	 * Transform all replaced characters to their original version.
+	 * 
+	 * @param	string					$content Content to transform
+	 * @param	array<string, string>	$replacements List of replacements
+	 * @return	string Transformed content
+	 */
+	private static function transform_replaced_characters( $content, array $replacements ) {
+		return \str_replace(
+			\array_merge(
+				[
+					'<html><meta charset="utf-8">',
+					'</html>',
+					'%20data-epi-spacing%20',
+					'"data-epi-spacing%20',
+					'%_epi_20data-epi-spacing%_epi_20', // % has been replaced with %_epi_ after replacing spaces
+					' data-epi-spacing',
+				],
+				\array_values( $replacements )
+			),
+			\array_merge(
+				[
+					'',
+					'',
+					' ',
+					'" ',
+					' ',
+					' ',
+				],
+				\array_keys( $replacements )
+			),
+			$content
+		);
 	}
 }

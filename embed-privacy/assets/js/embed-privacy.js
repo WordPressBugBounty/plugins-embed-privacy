@@ -30,7 +30,7 @@ document.addEventListener( 'DOMContentLoaded', function() {
 	function checkboxActivation( target ) {
 		const container = target.closest( '.embed-privacy-container' );
 		var embedProvider = target.getAttribute( 'data-embed-provider' );
-		var cookie = ( get_cookie( 'embed-privacy' ) ? JSON.parse( get_cookie( 'embed-privacy' ) ) : '' );
+		var cookie = getCookieJson( 'embed-privacy' );
 		
 		if ( target.checked ) {
 			// add|update the cookie's value
@@ -47,7 +47,11 @@ document.addEventListener( 'DOMContentLoaded', function() {
 			
 			// focus first element in container, but not for opt-out shortcode
 			if ( container && document.activeElement !== container ) {
-				container.querySelector( '.embed-privacy-content > :first-child' ).focus();
+				const firstChild = container.querySelector( '.embed-privacy-content > :first-child' );
+
+				if ( firstChild ) {
+					firstChild.focus();
+				}
 			}
 		}
 		else if ( cookie !== null ) {
@@ -71,7 +75,7 @@ document.addEventListener( 'DOMContentLoaded', function() {
 	 */
 	function enableAlwaysActiveProviders( currentOverlays ) {
 		const activeElement = document.activeElement;
-		var cookie = ( get_cookie( 'embed-privacy' ) ? JSON.parse( get_cookie( 'embed-privacy' ) ) : '' );
+		var cookie = getCookieJson( 'embed-privacy' );
 		
 		if ( ! currentOverlays ) {
 			currentOverlays = overlays;
@@ -103,7 +107,7 @@ document.addEventListener( 'DOMContentLoaded', function() {
 	 * @return	{string[]} List of always active providers
 	 */
 	function getAlwaysActiveProviders() {
-		const cookie = ( get_cookie( 'embed-privacy' ) ? JSON.parse( get_cookie( 'embed-privacy' ) ) : '' );
+		const cookie = getCookieJson( 'embed-privacy' );
 		
 		if ( ! cookie ) {
 			return [];
@@ -124,6 +128,12 @@ document.addEventListener( 'DOMContentLoaded', function() {
 	 */
 	function initOverlays( embedOverlays, overlayLinks, checkboxes, labels ) {
 		for ( var i = 0; i < embedOverlays.length; i++ ) {
+			// don't bind listeners twice (e.g. when re-initialized via the MutationObserver)
+			if ( embedOverlays[ i ].hasAttribute( 'data-ep-initialized' ) ) {
+				continue;
+			}
+			
+			embedOverlays[ i ].setAttribute( 'data-ep-initialized', '' );
 			embedOverlays[ i ].addEventListener( 'click', function( event ) {
 				if ( event.currentTarget.tagName !== 'INPUT' ) {
 					overlayClick( event.currentTarget, true );
@@ -150,6 +160,11 @@ document.addEventListener( 'DOMContentLoaded', function() {
 		}
 		
 		for ( var i = 0; i < overlayLinks.length; i++ ) {
+			if ( overlayLinks[ i ].hasAttribute( 'data-ep-initialized' ) ) {
+				continue;
+			}
+			
+			overlayLinks[ i ].setAttribute( 'data-ep-initialized', '' );
 			overlayLinks[ i ].addEventListener( 'click', function( event ) {
 				// don't trigger the overlays click
 				event.stopPropagation();
@@ -157,6 +172,12 @@ document.addEventListener( 'DOMContentLoaded', function() {
 		}
 		
 		for ( var i = 0; i < checkboxes.length; i++ ) {
+			if ( checkboxes[ i ].hasAttribute( 'data-ep-initialized' ) ) {
+				continue;
+			}
+			
+			checkboxes[ i ].setAttribute( 'data-ep-initialized', '' );
+			
 			checkboxes[ i ].addEventListener( 'click', function( event ) {
 				// don't trigger the overlays click
 				event.stopPropagation();
@@ -166,6 +187,11 @@ document.addEventListener( 'DOMContentLoaded', function() {
 		}
 		
 		for ( var i = 0; i < labels.length; i++ ) {
+			if ( labels[ i ].hasAttribute( 'data-ep-initialized' ) ) {
+				continue;
+			}
+			
+			labels[ i ].setAttribute( 'data-ep-initialized', '' );
 			labels[ i ].addEventListener( 'click', function( event ) {
 				// don't trigger the overlays click
 				event.stopPropagation();
@@ -184,6 +210,11 @@ document.addEventListener( 'DOMContentLoaded', function() {
 		const observer = new MutationObserver( ( mutations ) => {
 			for ( const mutation of mutations ) {
 				for ( const newNodes of mutation.addedNodes ) {
+					// added nodes can be text/comment nodes, which have no querySelectorAll
+					if ( newNodes.nodeType !== Node.ELEMENT_NODE ) {
+						continue;
+					}
+
 					const overlays = newNodes.querySelectorAll( '.embed-privacy-overlay' );
 					
 					if ( overlays.length ) {
@@ -270,9 +301,23 @@ document.addEventListener( 'DOMContentLoaded', function() {
 		// hide the embed overlay
 		target.style.display = 'none';
 		// get stored content from JavaScript
-		var embedObject = JSON.parse( window[ '_' + target.parentNode.getAttribute( 'data-embed-id' ) ] );
-		
+		var embedObject;
+
+		try {
+			embedObject = JSON.parse( window[ '_' + target.parentNode.getAttribute( 'data-embed-id' ) ] );
+		}
+		catch ( exception ) {
+			return;
+		}
+
 		embedContent.innerHTML = htmlentities_decode( embedObject.embed );
+
+		// announce to screen readers that the embed has been loaded
+		var srMessage = embedContainer.querySelector( '.embed-privacy-sr-message' );
+		
+		if ( srMessage ) {
+			srMessage.textContent = srMessage.getAttribute( 'data-message' ) || '';
+		}
 		
 		// reset wrapper inline CSS set in setMinHeight()
 		var wrapper = embedContainer.parentNode;
@@ -304,7 +349,11 @@ document.addEventListener( 'DOMContentLoaded', function() {
 		
 		// focus first element in container
 		if ( ! isSynthetic ) {
-			embedContainer.querySelector( '.embed-privacy-content > :first-child' ).focus();
+			const firstChild = embedContainer.querySelector( '.embed-privacy-content > :first-child' );
+
+			if ( firstChild ) {
+				firstChild.focus();
+			}
 		}
 		
 		if ( typeof jQuery !== 'undefined' ) {
@@ -322,6 +371,12 @@ document.addEventListener( 'DOMContentLoaded', function() {
 					clearInterval( interval );
 				}
 			}, 100 );
+		}
+		
+		const aviaClickToPlayOverlay = embedContainer.querySelector( '.av-click-to-play-overlay' );
+		
+		if ( aviaClickToPlayOverlay ) {
+			aviaClickToPlayOverlay.click();
 		}
 	}
 	
@@ -364,6 +419,27 @@ function get_cookie( name ) {
 }
 
 /**
+ * Get a cookie and decode it as JSON.
+ *
+ * @param	{string}	name The name of the cookie
+ * @return	{Object|string} The decoded cookie or an empty string
+ */
+function getCookieJson( name ) {
+	var value = get_cookie( name );
+
+	if ( ! value ) {
+		return null;
+	}
+
+	try {
+		return JSON.parse( value );
+	}
+	catch ( exception ) {
+		return null;
+	}
+}
+
+/**
  * Decode a string with HTML entities.
  * 
  * @param	{string}	content The content to decode
@@ -385,7 +461,7 @@ function htmlentities_decode( content ) {
  * @param	{string}	name The name of the cookie
  */
 function remove_cookie( name ) {
-	document.cookie = name + '=; expires=0; path=/';
+	document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax';
 }
 
 /**
@@ -404,5 +480,6 @@ function set_cookie( name, value, days ) {
 		date.setTime( date.getTime() + ( days * 24 * 60 * 60 * 1000 ) );
 		expires = '; expires=' + date.toUTCString();
 	}
-	document.cookie = name + '=' + ( value || '' ) + expires + '; path=/';
+	var secure = window.location.protocol === 'https:' ? '; Secure' : '';
+	document.cookie = name + '=' + ( value || '' ) + expires + '; path=/; SameSite=Lax' + secure;
 }

@@ -81,6 +81,11 @@ final class Widget {
 		$original_callback_params = \func_get_args();
 		
 		$widget_id = isset( $original_callback_params[0]['widget_id'] ) ? $original_callback_params[0]['widget_id'] : null;
+		
+		if ( $widget_id === null || ! isset( $wp_registered_widgets[ $widget_id ] ) ) {
+			return;
+		}
+		
 		$original_callback = $wp_registered_widgets[ $widget_id ]['original_callback'];
 		
 		$wp_registered_widgets[ $widget_id ]['callback'] = $original_callback; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
@@ -101,7 +106,9 @@ final class Widget {
 			 * @param	string	$widget_id The widget's full ID
 			 * @param	string	$sidebar_id The current sidebar ID
 			 */
-			echo \apply_filters( 'embed_privacy_widget_output', $widget_output, $widget_id, $sidebar_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			$widget_output = \apply_filters( 'embed_privacy_widget_output', $widget_output, $widget_id, $sidebar_id );
+			
+			echo \is_string( $widget_output ) ? $widget_output : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 	}
 	

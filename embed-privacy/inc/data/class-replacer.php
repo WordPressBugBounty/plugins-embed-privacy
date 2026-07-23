@@ -72,9 +72,9 @@ final class Replacer {
 		 */
 		$allowed_tags = (array) \apply_filters( 'embed_privacy_replacer_matcher_elements', $allowed_tags, $provider );
 		
-		$tags_regex = '(' . \implode( '|', \array_filter( $allowed_tags, static function( $tag ) {
+		$tags_regex = '(' . \implode( '|', \array_map( static function( $tag ) {
 			return \preg_quote( $tag, '/' );
-		} ) ) . ')';
+		}, $allowed_tags ) ) . ')';
 		$pattern = '/<' . $tags_regex . '([^"]*)"([^<]*)(?<original_pattern>' . \trim( $pattern, '/' ) . ')([^"]*)"([^>]*)(>(.*?)<\/' . $tags_regex . ')?>/';
 		
 		return $pattern;
@@ -111,7 +111,11 @@ final class Replacer {
 		}
 		
 		// do nothing for ignored shortcodes
-		if ( ! empty( $tag ) && \in_array( $tag, $embed_privacy->shortcode->get_ignored(), true ) ) {
+		if (
+			! empty( $data )
+			&& \is_string( $data )
+			&& \in_array( $data, $embed_privacy->shortcode->get_ignored(), true )
+		) {
 			return $content;
 		}
 		
@@ -137,21 +141,13 @@ final class Replacer {
 		}
 		
 		// we don't need to process an empty content as it never contains an embed
-		if ( empty( \trim( $content ) ) ) {
+		if ( \trim( $content ) === '' ) {
 			return $content;
 		}
 		
-		$new_content = $content;
-		$replacement = new Replacement( $new_content );
-		$new_content = $replacement->get();
+		$replacement = new Replacement( $content );
 		
-		while ( $new_content !== $content ) {
-			$content = $new_content;
-			$replacement = new Replacement( $new_content );
-			$new_content = $replacement->get();
-		}
-		
-		return $new_content;
+		return $replacement->get();
 	}
 	
 	/**
