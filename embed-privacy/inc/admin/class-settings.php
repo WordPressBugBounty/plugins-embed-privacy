@@ -30,11 +30,14 @@ final class Settings {
 			return;
 		}
 		
-		\settings_errors( 'embed_privacy_messages' );
 		?>
 		<div class="wrap">
-			<h1><?php \esc_html_e( 'Embed Privacy', 'embed-privacy' ); ?> <a href="<?php echo \esc_url( \admin_url( 'edit.php?post_type=epi_embed' ) ); ?>" class="page-title-action"><?php \esc_html_e( 'Manage embeds', 'embed-privacy' ); ?></a></h1>
-			
+			<h1 class="wp-heading-inline"><?php \esc_html_e( 'Embed Privacy', 'embed-privacy' ); ?></h1>
+			<a href="<?php echo \esc_url( \admin_url( 'edit.php?post_type=epi_embed' ) ); ?>" class="page-title-action"><?php \esc_html_e( 'Manage embeds', 'embed-privacy' ); ?></a>
+			<hr class="wp-header-end">
+
+			<?php \settings_errors( 'embed_privacy_messages' ); ?>
+
 			<form action="options.php" method="post" class="embed-privacy__settings-form">
 				<?php
 				\settings_fields( 'embed_privacy' );
@@ -43,14 +46,14 @@ final class Settings {
 				?>
 			</form>
 			
-			<h2><?php \esc_html_e( 'Support data', 'embed-privacy' ); ?></h2>
+			<h2 id="embed-privacy-support-data"><?php \esc_html_e( 'Support data', 'embed-privacy' ); ?></h2>
 			<p><?php \esc_html_e( 'If you file a support request, please include the following data.', 'embed-privacy' ); ?></p>
 			
 			<div class="embed-privacy__copy-to-clipboard--container">
 				<button type="button" class="button embed-privacy__support-data--copy-to-clipboard embed-privacy__copy-to-clipboard" data-copy="embed-privacy__support-data--code" data-status="embed-privacy__copy-to-clipboard--status--support-data"><?php \esc_html_e( 'Copy support data to clipboard', 'embed-privacy' ); ?></button>
 				<p class="embed-privacy__copy-to-clipboard--status embed-privacy__copy-to-clipboard--status--support-data" role="status"></p>
 			</div>
-			<pre class="embed-privacy__support-data--code-container"><code class="embed-privacy__support-data--code"><?php echo \esc_html( Support_Data::get() ); ?></code></pre>
+			<pre class="embed-privacy__support-data--code-container" tabindex="0" role="region" aria-labelledby="embed-privacy-support-data"><code class="embed-privacy__support-data--code"><?php echo \esc_html( Support_Data::get() ); ?></code></pre>
 		</div>
 		<?php
 	}
@@ -59,10 +62,11 @@ final class Settings {
 	 * Register settings.
 	 */
 	public static function register() {
-		\add_settings_section( 'embed_privacy_general', null, '__return_null', 'embed_privacy' );
+		\add_settings_section( 'embed_privacy_general', \__( 'Embeds', 'embed-privacy' ), '__return_null', 'embed_privacy' );
+		\add_settings_section( 'embed_privacy_data_handling', \__( 'Data handling', 'embed-privacy' ), '__return_null', 'embed_privacy' );
 		\add_settings_field(
 			'embed_privacy_local_activitypub_posts',
-			\__( 'Embeds', 'embed-privacy' ),
+			\__return_empty_string(),
 			[ Field::class, 'get' ],
 			'embed_privacy',
 			'embed_privacy_general',
@@ -141,10 +145,10 @@ final class Settings {
 		\register_setting( 'embed_privacy', 'embed_privacy_force_script_loading' );
 		\add_settings_field(
 			'embed_privacy_preserve_data_on_uninstall',
-			\__( 'Data handling', 'embed-privacy' ),
+			\__return_empty_string(),
 			[ Field::class, 'get' ],
 			'embed_privacy',
-			'embed_privacy_general',
+			'embed_privacy_data_handling',
 			[
 				'description' => \__( 'By enabling this option, all plugin data is preserved on uninstall.', 'embed-privacy' ),
 				'name' => 'embed_privacy_preserve_data_on_uninstall',

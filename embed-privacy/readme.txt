@@ -2,8 +2,8 @@
 Contributors: epiphyt, kittmedia, krafit
 Tags: oembed, privacy, gutenberg, iframes, performance
 Requires at least: 5.9
-Stable tag: 1.13.0
-Tested up to: 7.0
+Stable tag: 1.14.0
+Tested up to: 7.1
 Requires PHP: 5.6
 License: GPL2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -132,6 +132,12 @@ The shortcode `[embed_privacy_opt_out]` can be used to let users opt-out of embe
 [embed_privacy_opt_out headline="My custom headline"]
 `
 
+<code>headline_level</code> – Set the heading level of the headline, from 1 to 6 (default: 3)
+
+`
+[embed_privacy_opt_out headline_level="2"]
+`
+
 <code>subline</code> – Add a custom subline (default: Enable or disable embed providers globally. By enabling a provider, its embedded content will be displayed directly on every page without asking you anymore.)
 
 `
@@ -158,6 +164,12 @@ If you’re using a caching plugin, make sure you enable the "JavaScript detecti
 
 Check out our documentation: [https://epiph.yt/en/embed-privacy/documentation/](https://epiph.yt/en/embed-privacy/documentation/)
 
+= Is Embed Privacy accessible? =
+
+Yes. During development, I test each feature against the Web Content Accessibility Guidelines (WCAG). You can find the [Accessibility Conformance Report](https://docs.epiph.yt/embed-privacy/acr.html) in the documentation.
+
+If you find an issue, please don't hesitate to contact me via the support forums or via my [contact page](https://epiph.yt/en/contact/).
+
 = Who are you, folks? =
 
 We are [Epiphyt](https://epiph.yt/en/), your friendly neighborhood WordPress plugin shop from southern Germany.
@@ -167,6 +179,21 @@ We are [Epiphyt](https://epiph.yt/en/), your friendly neighborhood WordPress plu
 You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://patchstack.com/database/vdp/embed-privacy)
 
 == Changelog ==
+
+= 1.14.0 =
+* Added: New attribute `headline_level` for the opt-out shortcode
+* Added: Notice that the link to the privacy policy opens in a new tab
+* Added: Title for video iframes in Elementor
+* Improved: Field descriptions are now programmatically associated with their form controls
+* Improved: Overlay styles are now also applied while an element inside the overlay is focussed
+* Improved: Reduced motion and forced colors preferences are now respected
+* Improved: Support data can now be scrolled via keyboard
+* Improved: The list of embed providers of the opt-out shortcode is now labelled by its headline
+* Improved: The settings page now uses proper section headings
+* Fixed: A stale, invisible button remained after activating an overlay with the mouse
+* Fixed: Activating an overlay via keyboard loaded the embedded content twice and caused a JavaScript error
+* Fixed: Focus was lost after loading an embedded content
+* Fixed: Labelling and keyboard focus handling of the background image field in the admin
 
 = 1.13.0 =
 * Added: Support for cover block embed URLs
